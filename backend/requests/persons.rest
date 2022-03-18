@@ -5,7 +5,7 @@ GET http://localhost:3001/api/persons
 GET http://localhost:3001/api/persons/2
 
 ###
-DELETE http://localhost:3001/api/persons/1
+DELETE http://localhost:3001/api/persons/6233dd04c5187ceb6fe79406
 
 ### 
 POST http://localhost:3001/api/persons

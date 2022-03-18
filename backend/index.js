@@ -13,36 +13,28 @@ app.use(express.json());
 morgan.token('body', (req, res) => JSON.stringify(req.body));
 app.use(morgan(":method :url :status - :response-time ms - :res[content-length] :body"));
 
-// const generateId = () => {
-//   let maxId = persons.length > 0 ? Math.max(...persons.map(p => p.id)) : 0;
-//   return maxId + 1;
-// }
-
 app.get('/api/persons', (request, response) => {
   Person.find({}).then(persons => {
     response.json(persons);
   })
 });
 
-app.get('/info', (request, response) => {
-  response.send(
-    `<p>Phonebook has info for ${persons.length} people</p> <p>${new Date()}</p>`
-    );
+app.get('/info', (request, response, next) => {
+  Person.find({})
+    .then(persons => {
+      response.send(
+        `<p>Phonebook has info for ${persons.length} people</p> <p>${new Date()}</p>`
+        );
+    })
+    .catch(error => next(error))
 });
 
-app.get('/api/persons/:id', (request, response) => {
-  Person.findById(request.params.id).then(person => {
-    response.json(person);
-  })
-
-  // let id = Number(request.params.id);
-  // let person = persons.find(person => person.id === id);
-
-  // if (person) {
-  //   response.json(person);
-  // } else {
-  //   response.status(404).end();
-  // }
+app.get('/api/persons/:id', (request, response, next) => {
+  Person.findById(request.params.id)
+    .then(person => {
+      response.json(person);
+    })
+    .catch(error => next(error))
 })
 
 app.post('/api/persons', (request, response) => {
@@ -69,12 +61,46 @@ app.post('/api/persons', (request, response) => {
   })
 })
 
-app.delete('/api/persons/:id', (request, response) => {
-  let id = Number(request.params.id);
-  persons = persons.filter(person => person.id !== id);
+app.put('/api/persons/:id', (request, response, next) => {
+  const body = request.body;
 
-  response.status(204).end();
+  const person = {
+    name: body.name,
+    number: body.number
+  }
+
+  Person.findByIdAndUpdate(request.params.id, person, { new: true })
+    .then(updatedPerson => {
+      response.json(updatedPerson);
+    })
+    .catch(error => next(error));
 })
+
+app.delete('/api/persons/:id', (request, response, next) => {
+  Person.findByIdAndRemove(request.params.id)
+    .then(result => {
+      response.status(204).end();
+    })
+    .catch(error => next(error));
+})
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' });
+}
+
+app.use(unknownEndpoint);
+
+const errorHandler = (error, request, response, next) => {
+  console.log(error.message);
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'invalid id' });
+  }
+
+  next(error);
+}
+
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Server is listening on ${PORT}`);
