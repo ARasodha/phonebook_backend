@@ -37,12 +37,12 @@ app.get('/api/persons/:id', (request, response, next) => {
     .catch(error => next(error))
 })
 
-app.post('/api/persons', (request, response) => {
+app.post('/api/persons', (request, response, next) => {
   let body = request.body;
 
-  if (!body.name || !body.number) {
-    return response.status(404).json({ error: 'number must be unique' });
-  }
+  // if (!body.name || !body.number) {
+  //   return response.status(404).json({ error: error.message });
+  // }
   // if (!body.name || !body.number) {
   //   return response.status(404).json({ error: 'name and number must both be provided' });
   // } else if (persons.map(p => p.name.toLowerCase()).includes(body.name.toLowerCase())) {
@@ -59,17 +59,16 @@ app.post('/api/persons', (request, response) => {
   person.save().then(savedPerson => {
     response.json(savedPerson);
   })
+  .catch(error => next(error))
 })
 
 app.put('/api/persons/:id', (request, response, next) => {
-  const body = request.body;
+  const { name, number } = request.body;
 
-  const person = {
-    name: body.name,
-    number: body.number
-  }
-
-  Person.findByIdAndUpdate(request.params.id, person, { new: true })
+  Person.findByIdAndUpdate(
+    request.params.id, 
+    { name, number },
+    { new: true, runValidators: true, context: 'query' })
     .then(updatedPerson => {
       response.json(updatedPerson);
     })
@@ -91,10 +90,12 @@ const unknownEndpoint = (request, response) => {
 app.use(unknownEndpoint);
 
 const errorHandler = (error, request, response, next) => {
-  console.log(error.message);
+  console.log('error message', error.message);
 
   if (error.name === 'CastError') {
     return response.status(400).send({ error: 'invalid id' });
+  } else if (error.name === 'ValidationError') {
+    response.status(400).send({ error: error.message })
   }
 
   next(error);
